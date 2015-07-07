@@ -28,8 +28,6 @@ public class PCMEncoder {
     private int bitrate;
     private int sampleRate;
     private int channelCount;
-    private int bufferSize;
-    private int batchSize;
 
     private MediaFormat mediaFormat;
     private MediaCodec mediaCodec;
@@ -42,13 +40,17 @@ public class PCMEncoder {
     private int totalBytesRead;
     private double presentationTimeUs;
 
+    /**
+     * Creates encoder with given params for output file
+     *
+     * @param bitrate
+     * @param sampleRate
+     * @param channelCount
+     */
     public PCMEncoder(final int bitrate, final int sampleRate, int channelCount) {
         this.bitrate = bitrate;
         this.sampleRate = sampleRate;
         this.channelCount = channelCount;
-
-        this.bufferSize = 2 * sampleRate;
-        this.batchSize = 20 * bufferSize;
     }
 
     public void setOutputPath(final String outputPath) {
@@ -89,16 +91,23 @@ public class PCMEncoder {
         mediaMuxer.release();
     }
 
-    public void encode(InputStream inputStream) throws IOException {
+    /**
+     * Encodes input stream
+     *
+     * @param inputStream
+     * @param sampleRate sample rate of input stream
+     * @throws IOException
+     */
+    public void encode(InputStream inputStream, int sampleRate) throws IOException {
         Log.d(TAG, "Starting encoding of InputStream");
-        byte[] tempBuffer = new byte[bufferSize];
+        byte[] tempBuffer = new byte[2 * sampleRate];
         boolean hasMoreData = true;
         boolean stop = false;
 
-        do {
+        while (!stop) {
             int inputBufferIndex = 0;
             int currentBatchRead = 0;
-            while (inputBufferIndex != -1 && hasMoreData && currentBatchRead <= batchSize) {
+            while (inputBufferIndex != -1 && hasMoreData && currentBatchRead <= 50 * sampleRate) {
                 inputBufferIndex = mediaCodec.dequeueInputBuffer(CODEC_TIMEOUT);
 
                 if (inputBufferIndex >= 0) {
@@ -140,7 +149,7 @@ public class PCMEncoder {
                     mediaMuxer.start();
                 }
             }
-        } while (!stop);
+        }
 
         inputStream.close();
         Log.d(TAG, "Finished encoding of InputStream");

@@ -78,7 +78,7 @@ public class MainActivity extends ActionBarActivity {
                         Log.d(TAG, "Encoding: " + i);
                         InputStream inputStream = getAssets().open("test.wav");
                         inputStream.skip(44);
-                        pcmEncoder.encode(inputStream);
+                        pcmEncoder.encode(inputStream, 11025);
                     }
                     pcmEncoder.stop();
                     handler.post(new Runnable() {
