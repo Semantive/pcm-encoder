@@ -5,10 +5,10 @@ PCMEncoder provides simple API for concatenating multiple PCM streams into one, 
 
 Usage:
 ```java
-PCMEncoder pcmEncoder = new PCMEncoder(16000, 11025, 1);
+PCMEncoder pcmEncoder = new PCMEncoder(outputFileBitrate, outputFileSampleRate, outputFileNumberOfChannels);
 pcmEncoder.setOutputPath(outputPath);
 pcmEncoder.prepare();
-pcmEncoder.encode(inputStream);
+pcmEncoder.encode(inputStream, inputStreamSampleRate);
 pcmEncoder.stop();
 ```
 
