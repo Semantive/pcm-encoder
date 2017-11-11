@@ -85,10 +85,18 @@ public class PCMEncoder {
 
     public void stop() {
         Log.d(TAG, "Stopping PCMEncoder");
+        handleEndOfStream();
+
         mediaCodec.stop();
         mediaCodec.release();
         mediaMuxer.stop();
         mediaMuxer.release();
+    }
+
+    private void handleEndOfStream() {
+        int inputBufferIndex = mediaCodec.dequeueInputBuffer(CODEC_TIMEOUT);
+        mediaCodec.queueInputBuffer(inputBufferIndex, 0, 0, (long) presentationTimeUs, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
+        writeOutputs();
     }
 
     /**
@@ -129,29 +137,33 @@ public class PCMEncoder {
                 }
             }
 
-            int outputBufferIndex = 0;
-            while (outputBufferIndex != MediaCodec.INFO_TRY_AGAIN_LATER) {
-                outputBufferIndex = mediaCodec.dequeueOutputBuffer(bufferInfo, CODEC_TIMEOUT);
-                if (outputBufferIndex >= 0) {
-                    ByteBuffer encodedData = codecOutputBuffers[outputBufferIndex];
-                    encodedData.position(bufferInfo.offset);
-                    encodedData.limit(bufferInfo.offset + bufferInfo.size);
-
-                    if ((bufferInfo.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0 && bufferInfo.size != 0) {
-                        mediaCodec.releaseOutputBuffer(outputBufferIndex, false);
-                    } else {
-                        mediaMuxer.writeSampleData(audioTrackId, codecOutputBuffers[outputBufferIndex], bufferInfo);
-                        mediaCodec.releaseOutputBuffer(outputBufferIndex, false);
-                    }
-                } else if (outputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-                    mediaFormat = mediaCodec.getOutputFormat();
-                    audioTrackId = mediaMuxer.addTrack(mediaFormat);
-                    mediaMuxer.start();
-                }
-            }
+            writeOutputs();
         }
 
         inputStream.close();
         Log.d(TAG, "Finished encoding of InputStream");
+    }
+
+    private void writeOutputs() {
+        int outputBufferIndex = 0;
+        while (outputBufferIndex != MediaCodec.INFO_TRY_AGAIN_LATER) {
+            outputBufferIndex = mediaCodec.dequeueOutputBuffer(bufferInfo, CODEC_TIMEOUT);
+            if (outputBufferIndex >= 0) {
+                ByteBuffer encodedData = codecOutputBuffers[outputBufferIndex];
+                encodedData.position(bufferInfo.offset);
+                encodedData.limit(bufferInfo.offset + bufferInfo.size);
+
+                if ((bufferInfo.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0 && bufferInfo.size != 0) {
+                    mediaCodec.releaseOutputBuffer(outputBufferIndex, false);
+                } else {
+                    mediaMuxer.writeSampleData(audioTrackId, codecOutputBuffers[outputBufferIndex], bufferInfo);
+                    mediaCodec.releaseOutputBuffer(outputBufferIndex, false);
+                }
+            } else if (outputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+                mediaFormat = mediaCodec.getOutputFormat();
+                audioTrackId = mediaMuxer.addTrack(mediaFormat);
+                mediaMuxer.start();
+            }
+        }
     }
 }
